@@ -1,6 +1,19 @@
 const { response } = require('express')
 const express = require('express')
 const app = express()
+var morgan = require('morgan')
+
+app.use(morgan(function (tokens, req, res) {
+    return [
+      tokens.method(req, res),
+      tokens.url(req, res),
+      tokens.status(req, res),
+      tokens.res(req, res, 'content-length'), '-',
+      tokens['response-time'](req, res), 'ms',
+      tokens.res(req, 'content-length'), JSON.stringify(req.body)
+    ].join(' ')
+  }))
+
 app.use(express.json())
 let phonebook = [
     { 
