@@ -1,8 +1,12 @@
+
+require('dotenv').config()
 const { response } = require('express')
 const express = require('express')
 const app = express()
 var morgan = require('morgan')
 const cors = require('cors')
+const Phone = require('./models/phone')
+
 app.use(express.static('build'))
 app.use(cors())
 app.use(morgan(function (tokens, req, res) {
@@ -17,6 +21,7 @@ app.use(morgan(function (tokens, req, res) {
   }))
 
 app.use(express.json())
+
 let phonebook = [
     { 
       "id": 1,
@@ -45,45 +50,47 @@ app.get('/', (request, response) => {
 })
 
 app.get('/api/persons', (request, response) => {
-  response.json(phonebook)
+  Phone.find({}).then(contacts => {
+    response.json(contacts)
+  })
 })
 
-app.get('/info', (request, response) => {
+app.get('/info', async (request, response) => {
+
+  const a = await Phone.find({}).then(ob => {
+    return  ob.length
+   })
     const info = {
-        amount: "Phonebook has info for " + phonebook.length + " people",
+        amount: "Phonebook has info for " + a + " people",
         date: new Date(),
     }
     const text = "<p>" + info.amount + "</p>" + "<p>" + info.date + "</p>"
     response.send(text)
 })
 
-app.get('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    const note = phonebook.find(note => note.id === id)
-    
+app.get('/api/persons/:id', (request, response, next) => {
+  Phone.findById(request.params.id)
+  .then(note => {
     if (note) {
       response.json(note)
     } else {
       response.status(404).end()
     }
-
+  })
+  .catch(error => next(error))
 })
 
-app.delete('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    phonebook = phonebook.filter(person => person.id !== id)
-  
+app.delete('/api/persons/:id', (request, response, next) => {
+  Phone.findByIdAndRemove(request.params.id)
+  .then(result => {
     response.status(204).end()
+  })
+  .catch(error => next(error))
   })
 
   app.post('/api/persons', (request, response) => {
     const id = Math.ceil(Math.random() * 100000)
     const body = request.body
-    const data = {
-        id: id,
-        name: "",
-        number: "",
-    }
     
     if (!body) {
         return response.status(400).json({ 
@@ -97,20 +104,48 @@ app.delete('/api/persons/:id', (request, response) => {
         return response.status(400).json({ 
             error: 'number must be defined' 
           })
-    } else if (phonebook.filter(a => a.name === body.name).length > 0) {
-        return response.status(400).json({ 
-            error: 'name must be unique' 
-          })
-    }
-    data.name = body.name
-    data.number = body.number
-    phonebook = phonebook.concat(data)
-    response.json(data)
+    } 
+
+    const phone = new Phone({
+      name: body.name,
+      number: body.number,
+    })
+
+    phone.save().then(saved => {
+      response.json(saved)
+    })
     
   })
 
+  app.put('/api/persons/:id', (request, response, next) => {
+    const body = request.body
+  
+    const phone = {
+      name: body.name,
+      number: body.number,
+    }
+  
+    Phone.findByIdAndUpdate(request.params.id, phone, { new: true })
+      .then(updatedNote => {
+        response.json(updatedNote)
+      })
+      .catch(error => next(error))
+  })
 
-  const PORT = process.env.PORT || 3001
+  const errorHandler = (error, request, response, next) => {
+    console.error(error.message)
+  
+    if (error.name === 'CastError') {
+      return response.status(400).send({ error: 'malformatted id' })
+    } 
+  
+    next(error)
+  }
+  
+  // this has to be the last loaded middleware.
+  app.use(errorHandler)
+
+  const PORT = process.env.PORT
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`)
   })
