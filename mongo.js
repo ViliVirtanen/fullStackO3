@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 const mongoose = require('mongoose')
 
 
@@ -19,29 +20,29 @@ const Phone = mongoose.model('contacts', phoneSchema)
 
 mongoose
   .connect(url)
-  .then((result) => {
+  .then(() => {
     console.log('connected')
     if (process.argv.length === 3) {
-        Phone.find({}).then(result => {
-            result.forEach(note => {
-              console.log(note.name + " " + note.number)
-            })
-             return mongoose.connection.close()
-          })
+      Phone.find({}).then(result => {
+        result.forEach(note => {
+          console.log(note.name + ' ' + note.number)
+        })
+        return mongoose.connection.close()
+      })
     } else {
-    const phone = new Phone({
-      name: process.argv[3],
-      number: process.argv[4],
-    })
+      const phone = new Phone({
+        name: process.argv[3],
+        number: process.argv[4],
+      })
 
-    return phone.save()
+      return phone.save()
     }
   })
   .then(() => {
     if (process.argv.length !== 3) {
-        console.log(`added ${process.argv[3]} number ${process.argv[4]} to phonebook`)
-        return mongoose.connection.close()
+      console.log(`added ${process.argv[3]} number ${process.argv[4]} to phonebook`)
+      return mongoose.connection.close()
     }
-    
+
   })
   .catch((err) => console.log(err))
